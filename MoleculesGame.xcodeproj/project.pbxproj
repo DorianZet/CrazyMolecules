@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		612BE48825DB1C1D007B541A /* BottomControlsStackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 612BE48725DB1C1D007B541A /* BottomControlsStackView.swift */; };
 		6132A76225D6E35D00003BE6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6132A76125D6E35D00003BE6 /* AppDelegate.swift */; };
 		6132A76425D6E35D00003BE6 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6132A76325D6E35D00003BE6 /* SceneDelegate.swift */; };
 		6132A76625D6E35D00003BE6 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6132A76525D6E35D00003BE6 /* ViewController.swift */; };
@@ -16,6 +17,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		612BE48725DB1C1D007B541A /* BottomControlsStackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomControlsStackView.swift; sourceTree = "<group>"; };
 		6132A75E25D6E35D00003BE6 /* MoleculesGame.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoleculesGame.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6132A76125D6E35D00003BE6 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		6132A76325D6E35D00003BE6 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -63,6 +65,7 @@
 				6132A76A25D6E35D00003BE6 /* Assets.xcassets */,
 				6132A76C25D6E35D00003BE6 /* LaunchScreen.storyboard */,
 				6132A76F25D6E35D00003BE6 /* Info.plist */,
+				612BE48725DB1C1D007B541A /* BottomControlsStackView.swift */,
 			);
 			path = MoleculesGame;
 			sourceTree = "<group>";
@@ -139,6 +142,7 @@
 			files = (
 				6132A76625D6E35D00003BE6 /* ViewController.swift in Sources */,
 				6132A76225D6E35D00003BE6 /* AppDelegate.swift in Sources */,
+				612BE48825DB1C1D007B541A /* BottomControlsStackView.swift in Sources */,
 				6132A76425D6E35D00003BE6 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

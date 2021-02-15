@@ -26,45 +26,17 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
     
     lazy var circleDiameterWidth: CGFloat = view.bounds.width
     
-    var animator: UIDynamicAnimator!
+    var animator: UIDynamicAnimator?
     
     var displayLink: CADisplayLink!
     
-    func createButton(bgColor color: UIColor) -> UIButton {
-        let button = UIButton(type: .system)
-        button.backgroundColor = color
-        button.layer.cornerRadius = 10
-        button.setTitle(">>", for: .normal)
-        button.setTitleColor(.black, for: .normal)
-        button.titleLabel?.font = UIFont.systemFont(ofSize: 22, weight: .bold)
-        button.layer.borderWidth = 3
-        button.layer.borderColor = UIColor.white.cgColor
-        button.addTarget(self, action: #selector(tapButtonSpeedUp), for: .touchDown)
-        button.addTarget(self, action: #selector(tapButtonSpeedDown), for: .touchUpInside)
-        return button
-    }
     
-    lazy var redButton: UIButton = createButton(bgColor: .systemRed) // the same way we can create green and yellow button.
-    lazy var greenButton: UIButton = createButton(bgColor: .systemGreen)
-    lazy var yellowButton: UIButton = createButton(bgColor: .systemYellow)
-    
-    lazy var bottomStackView: UIStackView = {
-        let sv = UIStackView()
-        sv.axis = .horizontal
-        sv.distribution = .fillEqually
-        sv.spacing = 16
-        [redButton, yellowButton, greenButton].forEach { (button) in
-            sv.addArrangedSubview(button)
-        }
-        return sv
-    }()
-        
     @objc fileprivate func tapButtonSpeedUp(sender: UIButton) {
         var currentView: UIView!
         
-        if sender == redButton {
+        if sender == bottomStackView.redButton {
             currentView = redView
-        } else if sender == yellowButton {
+        } else if sender == bottomStackView.yellowButton {
             currentView = yellowView
         } else {
             currentView = greenView
@@ -78,9 +50,9 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
     @objc fileprivate func tapButtonSpeedDown(sender: UIButton) {
         var currentView: UIView!
         
-        if sender == redButton {
+        if sender == bottomStackView.redButton {
             currentView = redView
-        } else if sender == yellowButton {
+        } else if sender == bottomStackView.yellowButton {
             currentView = yellowView
         } else {
             currentView = greenView
@@ -101,18 +73,41 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
             if CGPointDistance(from: layer1.position, to: layer2.position) < moleculeWidth {
                 print("collision")
                 
+                animateShake()
+                
                 redView.layer.removeAnimation(forKey: "redboxOrbit") // stop the animation if you want
                 yellowView.layer.removeAnimation(forKey: "yellowBoxOrbit")
                 greenView.layer.removeAnimation(forKey: "greenBoxOrbit")
-
-                redView.layer.position = redView.layer.presentation()!.position
-                yellowView.layer.position = yellowView.layer.presentation()!.position
-                greenView.layer.position = greenView.layer.presentation()!.position
+                
+                [redView, greenView, yellowView].forEach { (v) in
+                    v.layer.position = v.layer.presentation()!.position
+                }
                 
                 simulateCollisionAndGravity()
                 stopDisplayLink() // stop the display link if we don't need it any more
+                
+                let ac = UIAlertController(title: "OOPS!", message: "New game?", preferredStyle: .alert)
+                ac.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak self] (_) in
+                    self?.newGame()
+                }))
+                present(ac, animated: true)
             }
         }
+    }
+    
+    func newGame() {
+        animator?.removeAllBehaviors()
+        animator = nil
+
+        [redView, greenView, yellowView].forEach { (v) in
+            v.layer.removeAllAnimations()
+            v.transform = CGAffineTransform.identity // fixing a bug with squished molecules when starting a new game when the molecules are still bouncing.
+            v.frame = CGRect(x: view.bounds.midX - moleculeWidth / 2, y: view.bounds.midY - moleculeHeight / 2, width: moleculeWidth, height: moleculeHeight)
+            v.layer.speed = 1.0
+        }
+        
+        animateOrbit()
+        startDisplayLink()
     }
     
     @objc func handle(_ displayLink: CADisplayLink?) {
@@ -120,39 +115,11 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
         let view2PresentationLayer = yellowView.layer.presentation()
         let view3PresentationLayer = greenView.layer.presentation()
         
-        
         [view1PresentationLayer, view2PresentationLayer].forEach { (presentationLayer) in
             checkForIntersectionBetween(layer1: presentationLayer!, layer2: view3PresentationLayer!)
         }
         
-        [view1PresentationLayer, view3PresentationLayer].forEach { (presentationLayer) in
-            checkForIntersectionBetween(layer1: presentationLayer!, layer2: view2PresentationLayer!)
-        }
-        
-        [view2PresentationLayer, view3PresentationLayer].forEach { (presentationLayer) in
-            checkForIntersectionBetween(layer1: presentationLayer!, layer2: view1PresentationLayer!)
-        }
-        
-        //
-        
-        
-//        if view1PresentationLayer!.frame.intersects(view2PresentationLayer!.frame) {
-//            // collide the molecules only when the distance between their centers is less then their summed radiuses - in this way, the collision will correctly occur when the circles touch each other.
-//            if CGPointDistance(from: view1PresentationLayer!.position, to: view2PresentationLayer!.position) < moleculeWidth {
-//                print("collision")
-//
-//                redView.layer.removeAnimation(forKey: "redboxOrbit") // stop the animation if you want
-//                yellowView.layer.removeAnimation(forKey: "yellowBoxOrbit")
-//                greenView.layer.removeAnimation(forKey: "greenBoxOrbit")
-//
-//                redView.layer.position = view1PresentationLayer!.position
-//                yellowView.layer.position = view2PresentationLayer!.position
-//                greenView.layer.position = view3PresentationLayer!.position
-//
-//                simulateCollisionAndGravity()
-////                stopDisplayLink() // stop the display link if we don't need it any more
-//            }
-//        }
+        checkForIntersectionBetween(layer1: view1PresentationLayer!, layer2: view2PresentationLayer!)
     }
     
     func stopDisplayLink() {
@@ -160,7 +127,6 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
             displayLink.invalidate()
             displayLink = nil
         }
-        
     }
     
     func collisionBehavior(_ behavior: UICollisionBehavior, beganContactFor item1: UIDynamicItem, with item2: UIDynamicItem, at p: CGPoint) {
@@ -169,16 +135,24 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
 
     func simulateCollisionAndGravity() {
         animator = UIDynamicAnimator(referenceView: view)
-        let gravityBehavior = UIGravityBehavior(items: [redView, greenView, yellowView])
+        let moleculeViews = [redView, greenView, yellowView]
         
-        let collisionBehavior = UICollisionBehavior(items: [redView, greenView, yellowView])
+        let gravityBehavior = UIGravityBehavior(items: moleculeViews)
+        
+        let collisionBehavior = UICollisionBehavior(items: moleculeViews)
         collisionBehavior.addBoundary(withIdentifier: "redBoundary" as NSCopying, for: UIBezierPath(ovalIn: self.redView.bounds))
         collisionBehavior.addBoundary(withIdentifier: "greenBoundary" as NSCopying, for: UIBezierPath(ovalIn: self.greenView.bounds))
         collisionBehavior.addBoundary(withIdentifier: "yellowBoundary" as NSCopying, for: UIBezierPath(ovalIn: self.yellowView.bounds))
+        collisionBehavior.addBoundary(withIdentifier: "viewBoundary" as NSCopying, for: UIBezierPath(rect: self.view.bounds))
         collisionBehavior.collisionDelegate = self
+        
+        let bounceBehavior = UIDynamicItemBehavior(items: moleculeViews)
+        bounceBehavior.elasticity = 0.8
+        bounceBehavior.friction = 0.2
 
-        animator.addBehavior(collisionBehavior)
-        animator.addBehavior(gravityBehavior)
+        animator?.addBehavior(collisionBehavior)
+        animator?.addBehavior(gravityBehavior)
+        animator?.addBehavior(bounceBehavior)
     }
     
     func configureViews() {
@@ -192,8 +166,11 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
             v.layer.zPosition = 5
         }
         
+        redView.backgroundColor = .systemRed
+        greenView.backgroundColor = .systemGreen
+        yellowView.backgroundColor = .systemYellow
+        
         let yPosition: CGFloat = UIDevice.current.userInterfaceIdiom == .phone ? -150 / 2 : -150
-
         
         [redCircle, greenCircle, yellowCircle].forEach { (circle) in
             circle.frame = CGRect(x: view.bounds.midX - circleDiameterWidth / 2, y: view.bounds.midY + yPosition, width: circleDiameterWidth, height: circleDiameterWidth / 2.5)
@@ -203,30 +180,10 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
         redCircle.transform = CGAffineTransform(rotationAngle: .pi / 4)
         greenCircle.transform = CGAffineTransform(rotationAngle: -.pi / 4)
         yellowCircle.transform = CGAffineTransform(rotationAngle: .pi / 2)
-    }
-    
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        // Once we are here our view is layed out, so we can dynamically center it on the screen with no hardcoded values.
-        
-        configureViews()
-
-        animateOrbit()
-        startDisplayLink()
-    }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .black
         
         [redView, redCircle, greenView, greenCircle, yellowView, yellowCircle].forEach { (v) in
             self.view.addSubview(v)
         }
-        
-        redView.backgroundColor = .systemRed
-        greenView.backgroundColor = .systemGreen
-        yellowView.backgroundColor = .systemYellow
         
         self.view.addSubview(bottomStackView)
         bottomStackView.translatesAutoresizingMaskIntoConstraints = false
@@ -234,10 +191,29 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
             bottomStackView.heightAnchor.constraint(equalToConstant: 50),
             bottomStackView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             bottomStackView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
-//            redButton.widthAnchor.constraint(equalTo: view.widthAnchor, multiplier: 0.5),
             bottomStackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             bottomStackView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
         ])
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Once we are here our view is layed out, so we can dynamically center it on the screen with no hardcoded values.
+        configureViews()
+        animateOrbit()
+        startDisplayLink()
+    }
+    
+    let bottomStackView = BottomControlsStackView()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.backgroundColor = .black
+        
+        [bottomStackView.redButton, bottomStackView.yellowButton, bottomStackView.greenButton].forEach { (button) in
+            button.addTarget(self, action: #selector(tapButtonSpeedUp(sender:)), for: .touchDown)
+            button.addTarget(self, action: #selector(tapButtonSpeedDown(sender:)), for: .touchUpInside)
+        }
     }
     
     
@@ -298,6 +274,18 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
             ctx.cgContext.drawPath(using: .fillStroke)
         }
         return img
+    }
+    
+    func animateShake() {
+        let animation = CAKeyframeAnimation() // KeyFrame Animation works using... keyframes! The way the keyframes work is that we define all the different positions we would like our view to oscilate between.
+        animation.keyPath = "position.x"
+        animation.values = [0, 10, -10, 10, 0] // We define here the values of our keyframes. We say that we want our view to go from x=0 to x=10, then from x=10 to x=-10, then from x=-10 to x=10, and then back to x=0.
+        animation.keyTimes = [0, 0.16, 0.5, 0.83, 1] // We specify the time at which we would like each value to to be. So we start with 0, then at 0.16 of the whole given time we want the view to be at x=10, then at 0.5 of the whole given time we want it to be at x=-10 and so on.
+        animation.duration = 0.2 // we specify the duration of the shake in seconds.
+//        animation.repeatCount = Float.infinity // uncomment this to make the shake infinite.
+        
+        animation.isAdditive = true // this means that each value is relative to the starting position (0).
+        view.layer.add(animation, forKey: "animateShake")
     }
     
 }
