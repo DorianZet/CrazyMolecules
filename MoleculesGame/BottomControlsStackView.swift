@@ -16,6 +16,7 @@ func createButton(bgColor color: UIColor) -> UIButton {
     button.titleLabel?.font = UIFont.systemFont(ofSize: 22, weight: .bold)
     button.layer.borderWidth = 3
     button.layer.borderColor = UIColor.white.cgColor
+    button.isExclusiveTouch = true
     return button
 }
 
@@ -23,18 +24,6 @@ class BottomControlsStackView: UIStackView {
     var redButton: UIButton = createButton(bgColor: .systemRed) // the same way we can create green and yellow button.
     var greenButton: UIButton = createButton(bgColor: .systemGreen)
     var yellowButton: UIButton = createButton(bgColor: .systemYellow)
-    
-    
-    lazy var bottomStackView: UIStackView = {
-        let sv = UIStackView()
-        sv.axis = .horizontal
-        sv.distribution = .fillEqually
-        sv.spacing = 16
-        [redButton, yellowButton, greenButton].forEach { (button) in
-            sv.addArrangedSubview(button)
-        }
-        return sv
-    }()
     
     
     override init(frame: CGRect) {
@@ -46,6 +35,7 @@ class BottomControlsStackView: UIStackView {
         
         [redButton, yellowButton, greenButton].forEach { (button) in
             self.addArrangedSubview(button)
+            
         }
     }
     
