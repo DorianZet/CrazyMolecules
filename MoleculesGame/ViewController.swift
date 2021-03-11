@@ -12,7 +12,7 @@
 
 import UIKit
 
-class ViewController: UIViewController, UICollisionBehaviorDelegate {
+class ViewController: UIViewController {
     
     lazy var moleculeWidth: CGFloat = view.bounds.width / 12
     lazy var moleculeHeight: CGFloat = view.bounds.width / 12
@@ -39,11 +39,23 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
         return button
     }()
     
+    lazy var timerLabel: UILabel = {
+        let label = UILabel(frame: .zero)
+        label.text = "Time: \(gameTime)"
+        label.font = .preferredFont(forTextStyle: .headline)
+        label.textColor = .white
+        label.textAlignment = .center
+        return label
+    }()
+    
     var newGameTimer: Timer?
     var newGameTime = 0
     
     var displayLinkTimer: Timer?
     var displayLinkTime = 0
+    
+    var gameTimer: Timer?
+    var gameTime = 0
     
     @objc fileprivate func handleReload() {
         newGame()
@@ -62,7 +74,7 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
         
         currentView.layer.timeOffset = currentView.layer.convertTime(CACurrentMediaTime(), from: nil)
         currentView.layer.beginTime = CACurrentMediaTime()
-        currentView.layer.speed = 2.5
+        currentView.layer.speed *= 2.5
     }
     
     @objc fileprivate func tapButtonSpeedDown(sender: UIButton) {
@@ -78,7 +90,7 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
         
         currentView.layer.timeOffset = currentView.layer.convertTime(CACurrentMediaTime(), from: nil)
         currentView.layer.beginTime = CACurrentMediaTime()
-        currentView.layer.speed = 1.0
+        currentView.layer.speed /= 2.5
     }
     
     func startDisplayLink() {
@@ -103,6 +115,7 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
                 
                 simulateCollisionAndGravity()
                 reloadButton.isHidden = false
+                stopGameTimer()
                 stopDisplayLink() // stop the display link if we don't need it any more
             }
         }
@@ -139,10 +152,31 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
             displayLinkTime = 0
             displayLinkTimer = Timer.scheduledTimer(timeInterval: 0.4, target: self, selector: #selector(handleDisplayLinkTimer), userInfo: nil, repeats: true)
             
+            gameTime = 0
+            timerLabel.text = "Time: \(gameTime)"
+            gameTimer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(handleGameTimer), userInfo: nil, repeats: true)
+            
             newGameTimer?.invalidate()
             newGameTimer = nil
         }
         
+    }
+    
+    @objc fileprivate func handleGameTimer() {
+        gameTime += 1
+        timerLabel.text = "Time: \(gameTime)"
+        
+        if gameTime % 2 == 0 {
+            speedUpMolecules()
+        }
+    }
+    
+    fileprivate func speedUpMolecules() {
+        [redView, yellowView, greenView].forEach { (v) in
+            v.layer.timeOffset = v.layer.convertTime(CACurrentMediaTime(), from: nil)
+            v.layer.beginTime = CACurrentMediaTime()
+            v.layer.speed += 0.1
+        }
     }
     
     @objc fileprivate func handleDisplayLinkTimer() {
@@ -167,15 +201,18 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
         checkForIntersectionBetween(layer1: view1PresentationLayer!, layer2: view2PresentationLayer!)
     }
     
+    fileprivate func stopGameTimer() {
+        if gameTimer != nil {
+            gameTimer?.invalidate()
+            gameTimer = nil
+        }
+    }
+    
     fileprivate func stopDisplayLink() {
         if displayLink != nil {
             displayLink.invalidate()
             displayLink = nil
         }
-    }
-    
-    func collisionBehavior(_ behavior: UICollisionBehavior, beganContactFor item1: UIDynamicItem, with item2: UIDynamicItem, at p: CGPoint) {
-        print("CONTACT")
     }
 
     fileprivate func simulateCollisionAndGravity() {
@@ -231,13 +268,21 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
             self.view.addSubview(v)
         }
         
+        self.view.addSubview(timerLabel)
+        timerLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            timerLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
+            timerLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            timerLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+        ])
+        
         self.view.addSubview(reloadButton)
         reloadButton.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             reloadButton.heightAnchor.constraint(equalToConstant: 75),
             reloadButton.widthAnchor.constraint(equalToConstant: 75),
-            reloadButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            reloadButton.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            reloadButton.centerXAnchor.constraint(equalTo: yellowCircle.centerXAnchor),
+            reloadButton.centerYAnchor.constraint(equalTo: yellowCircle.centerYAnchor),
         ])
         
         self.view.addSubview(bottomStackView)
@@ -265,7 +310,10 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
         
         [bottomStackView.redButton, bottomStackView.yellowButton, bottomStackView.greenButton].forEach { (button) in
             button.addTarget(self, action: #selector(tapButtonSpeedUp(sender:)), for: .touchDown)
+            button.addTarget(self, action: #selector(tapButtonSpeedUp(sender:)), for: .touchDragInside)
             button.addTarget(self, action: #selector(tapButtonSpeedDown(sender:)), for: .touchUpInside)
+            button.addTarget(self, action: #selector(tapButtonSpeedDown(sender:)), for: .touchCancel)
+            button.addTarget(self, action: #selector(tapButtonSpeedDown(sender:)), for: .touchDragExit)
         }
     }
     
@@ -324,7 +372,7 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
         
         let img = renderer.image { (ctx) in
             let rectangle = CGRect(x: 0, y: 0, width: circleDiameterWidth, height: circleDiameterWidth).insetBy(dx: 5, dy: 5)
-            ctx.cgContext.setStrokeColor(UIColor.systemRed.cgColor)
+            ctx.cgContext.setStrokeColor(UIColor.lightGray.cgColor)
             ctx.cgContext.setFillColor(UIColor.clear.cgColor)
             ctx.cgContext.setLineWidth(4)
             ctx.cgContext.addEllipse(in: rectangle)
@@ -346,5 +394,15 @@ class ViewController: UIViewController, UICollisionBehaviorDelegate {
     }
     
 }
+
+
+extension ViewController: UICollisionBehaviorDelegate {
+    func collisionBehavior(_ behavior: UICollisionBehavior, beganContactFor item1: UIDynamicItem, with item2: UIDynamicItem, at p: CGPoint) {
+        print("CONTACT")
+    }
+}
+
+
+
 
 
